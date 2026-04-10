@@ -1,10 +1,5 @@
 import { NextResponse } from "next/server";
-
-type LamaticFlowResponse = {
-  result?: unknown;
-  reply?: unknown;
-  message?: unknown;
-};
+import { runChatAgent } from "../../../actions/orchestrate";
 
 export async function POST(req: Request) {
   try {
@@ -18,52 +13,12 @@ export async function POST(req: Request) {
       );
     }
 
-    const flowUrl = process.env.LAMATIC_FLOW_URL;
-    const apiKey = process.env.LAMATIC_API_KEY;
-
-    if (!flowUrl || !apiKey) {
-      return NextResponse.json(
-        { success: false, error: "Missing chatbot environment variables" },
-        { status: 500 }
-      );
-    }
-
-    const res = await fetch(flowUrl, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({ message }),
-      cache: "no-store",
-    });
-
-    const data = (await res.json()) as LamaticFlowResponse;
-
-    if (!res.ok) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: "Chatbot flow request failed",
-          raw: data,
-        },
-        { status: res.status }
-      );
-    }
-
-    const reply =
-      typeof data?.reply === "string"
-        ? data.reply
-        : typeof data?.result === "string"
-        ? data.result
-        : typeof data?.message === "string"
-        ? data.message
-        : JSON.stringify(data);
+    // 👇 THIS is where it goes
+    const result = await runChatAgent({ message });
 
     return NextResponse.json({
       success: true,
-      reply,
-      raw: data,
+      reply: result?.result ?? result, // ✅ FIX HERE
     });
   } catch (error) {
     console.error("Chatbot route error:", error);
@@ -72,7 +27,9 @@ export async function POST(req: Request) {
       {
         success: false,
         error:
-          error instanceof Error ? error.message : "Failed to get chatbot reply",
+          error instanceof Error
+            ? error.message
+            : "Failed to get chatbot reply",
       },
       { status: 500 }
     );

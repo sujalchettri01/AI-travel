@@ -1,13 +1,29 @@
-export async function runTravelAgent(input: {
-  destination: string;
-  days: number;
-  budget: number;
-  destination_type: string;
+// actions/orchestrate.ts
+
+type LamaticResponse = {
+  data?: {
+    executeWorkflow?: {
+      status?: string;
+      result?: any;
+    };
+  };
+  errors?: { message: string }[];
+};
+
+/* =========================
+   Core Executor (Reusable)
+   ========================= */
+
+export async function runLamaticWorkflow({
+  workflowId,
+  payload,
+}: {
+  workflowId: string;
+  payload: Record<string, any>;
 }) {
   const apiUrl = process.env.LAMATIC_API_URL;
   const apiKey = process.env.LAMATIC_API_KEY;
   const projectId = process.env.LAMATIC_PROJECT_ID;
-  const workflowId = process.env.GLOBAL_TRAVEL_AGENT;
 
   if (!apiUrl || !apiKey || !projectId || !workflowId) {
     throw new Error("Missing Lamatic environment variables");
@@ -22,21 +38,10 @@ export async function runTravelAgent(input: {
     },
     body: JSON.stringify({
       query: `
-        query Execute(
-          $workflowId: String!
-          $destination: String!
-          $days: Float!
-          $budget: Float!
-          $destination_type: String!
-        ) {
+        query Execute($workflowId: String!, $payload: JSON!) {
           executeWorkflow(
             workflowId: $workflowId
-            payload: {
-              destination: $destination
-              days: $days
-              budget: $budget
-              destination_type: $destination_type
-            }
+            payload: $payload
           ) {
             status
             result
@@ -45,10 +50,7 @@ export async function runTravelAgent(input: {
       `,
       variables: {
         workflowId,
-        destination: input.destination,
-        days: input.days,
-        budget: input.budget,
-        destination_type: input.destination_type,
+        payload,
       },
     }),
     cache: "no-store",
@@ -60,7 +62,7 @@ export async function runTravelAgent(input: {
     throw new Error("Lamatic returned an empty response");
   }
 
-  let data: any;
+  let data: LamaticResponse;
 
   try {
     data = JSON.parse(rawText);
@@ -79,4 +81,45 @@ export async function runTravelAgent(input: {
   }
 
   return data?.data?.executeWorkflow?.result;
+}
+
+/* =========================
+   Travel Agent (EXISTING)
+   ========================= */
+
+export async function runTravelAgent(input: {
+  destination: string;
+  days: number;
+  budget: number;
+  destination_type: string;
+}) {
+  const workflowId = process.env.GLOBAL_TRAVEL_AGENT;
+
+  if (!workflowId) {
+    throw new Error("Missing GLOBAL_TRAVEL_AGENT workflow ID");
+  }
+
+  return runLamaticWorkflow({
+    workflowId,
+    payload: input,
+  });
+}
+
+/* =========================
+   Chatbot Agent (NEW)
+   ========================= */
+
+export async function runChatAgent({ message }: { message: string }) {
+  const workflowId = process.env.CHATBOT_FLOW_ID;
+
+  if (!workflowId) {
+    throw new Error("Missing LAMATIC_CHATBOT_FLOW_ID");
+  }
+
+  return runLamaticWorkflow({
+    workflowId,
+    payload: {
+      message, // ✅ correctly defined
+    },
+  });
 }

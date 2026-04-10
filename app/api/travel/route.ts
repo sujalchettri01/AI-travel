@@ -1,36 +1,46 @@
 import { NextResponse } from "next/server";
-import { generateTravelPlan } from "../../../lib/travel";
+import { runTravelAgent } from "../../../actions/orchestrate";
 
 export async function POST(req: Request) {
   try {
     const body = await req.json();
 
-    const { destination, no_of_days, budget, destination_type } = body;
+    const destination = String(body?.destination || "").trim();
+    const days = Number(body?.days);
+    const budget = Number(body?.budget);
+    const destination_type = String(body?.destination_type || "").trim();
 
-    if (!destination || !no_of_days || !budget || !destination_type) {
+    if (!destination || !days || !budget || !destination_type) {
       return NextResponse.json(
-        { error: "Missing required fields" },
+        {
+          success: false,
+          error: "destination, days, budget and destination_type are required",
+        },
         { status: 400 }
       );
     }
 
-    const result = await generateTravelPlan({
+    const result = await runTravelAgent({
       destination,
-      no_of_days,
+      days,
       budget,
       destination_type,
     });
 
-    return NextResponse.json(result);
+    return NextResponse.json({
+      success: true,
+      result,
+    });
   } catch (error) {
-    console.error("Travel API Error:", error);
+    console.error("Travel route error:", error);
 
     return NextResponse.json(
       {
+        success: false,
         error:
           error instanceof Error
             ? error.message
-            : "Failed to generate itinerary",
+            : "Failed to generate travel itinerary",
       },
       { status: 500 }
     );

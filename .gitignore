@@ -1,5 +1,18 @@
-.next/
-node_modules/
+# dependencies
+/node_modules
+
+# next
+/.next
+/out
+/build
+
+# env
+.env.local
 .env
-dist/
-out/git status
+
+# logs
+*.log
+
+# OS
+.DS_Store
+Thumbs.db

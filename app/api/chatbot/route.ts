@@ -1,161 +1,79 @@
 import { NextResponse } from "next/server";
 
-function safeJsonParse(value: unknown): unknown {
-  if (typeof value !== "string") return value;
-
-  const cleaned = value
-    .replace(/^```json\s*/i, "")
-    .replace(/^```\s*/i, "")
-    .replace(/\s*```$/i, "")
-    .trim();
-
-  try {
-    return JSON.parse(cleaned);
-  } catch {
-    return value;
-  }
-}
-
-function unwrapLamaticResult(value: any): any {
-  let current = value;
-
-  for (let i = 0; i < 4; i++) {
-    if (typeof current === "string") {
-      const parsed = safeJsonParse(current);
-
-      if (parsed === current) break;
-      current = parsed;
-      continue;
-    }
-
-    if (current && typeof current === "object" && "result" in current) {
-      current = current.result;
-      continue;
-    }
-
-    break;
-  }
-
-  return current;
-}
-
-function extractReply(value: any): string {
-  if (typeof value === "string" && value.trim()) {
-    return value.trim();
-  }
-
-  if (!value || typeof value !== "object") {
-    return "Sorry, I couldn't understand that properly.";
-  }
-
-  if (typeof value.reply === "string" && value.reply.trim()) {
-    return value.reply.trim();
-  }
-
-  if (typeof value.output === "string" && value.output.trim()) {
-    return value.output.trim();
-  }
-
-  if (typeof value.message === "string" && value.message.trim()) {
-    return value.message.trim();
-  }
-
-  if (typeof value.text === "string" && value.text.trim()) {
-    return value.text.trim();
-  }
-
-  if (Array.isArray(value.messages) && value.messages.length > 0) {
-    const firstText = value.messages.find(
-      (item: any) => typeof item === "string" || typeof item?.text === "string"
-    );
-
-    if (typeof firstText === "string" && firstText.trim()) {
-      return firstText.trim();
-    }
-
-    if (firstText && typeof firstText?.text === "string" && firstText.text.trim()) {
-      return firstText.text.trim();
-    }
-  }
-
-  return "Sorry, I couldn't understand that properly.";
-}
+type LamaticFlowResponse = {
+  result?: unknown;
+  reply?: unknown;
+  message?: unknown;
+};
 
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const message = body?.message;
+    const message = String(body?.message || "").trim();
 
-    if (!message || typeof message !== "string") {
+    if (!message) {
       return NextResponse.json(
-        { reply: "Please enter a message." },
+        { success: false, error: "Message is required" },
         { status: 400 }
       );
     }
 
-    const response = await fetch(process.env.LAMATIC_API_URL as string, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${process.env.LAMATIC_API_KEY as string}`,
-        "x-project-id": process.env.LAMATIC_PROJECT_ID as string,
-      },
-      body: JSON.stringify({
-        query: `
-          query ExecuteWorkflow($workflowId: String!, $message: String!) {
-            executeWorkflow(
-              workflowId: $workflowId,
-              payload: {
-                message: $message
-              }
-            ) {
-              status
-              result
-            }
-          }
-        `,
-        variables: {
-          workflowId: process.env.CHATBOT_FLOW_ID,
-          message,
-        },
-      }),
-      cache: "no-store",
-    });
+    const flowUrl = process.env.LAMATIC_FLOW_URL;
+    const apiKey = process.env.LAMATIC_API_KEY;
 
-    const rawText = await response.text();
-    console.log("CHATBOT LAMATIC RAW RESPONSE:", rawText);
-
-    let data: any;
-
-    try {
-      data = JSON.parse(rawText);
-    } catch {
+    if (!flowUrl || !apiKey) {
       return NextResponse.json(
-        { reply: "Lamatic returned invalid JSON." },
+        { success: false, error: "Missing chatbot environment variables" },
         { status: 500 }
       );
     }
 
-    const workflowResult =
-      data?.data?.executeWorkflow?.result ?? data?.result ?? data;
+    const res = await fetch(flowUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({ message }),
+      cache: "no-store",
+    });
 
-    console.log(
-      "CHATBOT executeWorkflow.result:",
-      JSON.stringify(workflowResult, null, 2)
-    );
+    const data = (await res.json()) as LamaticFlowResponse;
 
-    const parsed = unwrapLamaticResult(workflowResult);
+    if (!res.ok) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Chatbot flow request failed",
+          raw: data,
+        },
+        { status: res.status }
+      );
+    }
 
-    console.log("CHATBOT FINAL PARSED RESULT:", JSON.stringify(parsed, null, 2));
+    const reply =
+      typeof data?.reply === "string"
+        ? data.reply
+        : typeof data?.result === "string"
+        ? data.result
+        : typeof data?.message === "string"
+        ? data.message
+        : JSON.stringify(data);
 
-    const reply = extractReply(parsed);
-
-    return NextResponse.json({ reply });
+    return NextResponse.json({
+      success: true,
+      reply,
+      raw: data,
+    });
   } catch (error) {
-    console.error("Chatbot API Error:", error);
+    console.error("Chatbot route error:", error);
 
     return NextResponse.json(
-      { reply: "Something went wrong. Please try again." },
+      {
+        success: false,
+        error:
+          error instanceof Error ? error.message : "Failed to get chatbot reply",
+      },
       { status: 500 }
     );
   }

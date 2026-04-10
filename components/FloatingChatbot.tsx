@@ -1,44 +1,29 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { MessageCircle, Send, X } from "lucide-react";
+import { useState } from "react";
 
 type ChatMessage = {
-  role: "user" | "assistant";
-  content: string;
+  role: "user" | "bot";
+  text: string;
 };
 
 export default function FloatingChatbot() {
-  const [isOpen, setIsOpen] = useState(false);
+  const [open, setOpen] = useState(false);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
-      role: "assistant",
-      content: "Hi 👋 Ask me anything about travel!",
+      role: "bot",
+      text: "Hi 👋 Ask me anything about travel. I can help with destinations, food, budget, itinerary ideas, and travel tips.",
     },
   ]);
 
-  const messagesEndRef = useRef<HTMLDivElement | null>(null);
+  async function sendMessage() {
+    if (!input.trim() || loading) return;
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  };
+    const userMessage = input.trim();
 
-  useEffect(() => {
-    scrollToBottom();
-  }, [messages, loading]);
-
-  const sendMessage = async () => {
-    const trimmed = input.trim();
-    if (!trimmed || loading) return;
-
-    const userMessage: ChatMessage = {
-      role: "user",
-      content: trimmed,
-    };
-
-    setMessages((prev) => [...prev, userMessage]);
+    setMessages((prev) => [...prev, { role: "user", text: userMessage }]);
     setInput("");
     setLoading(true);
 
@@ -48,123 +33,107 @@ export default function FloatingChatbot() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          message: trimmed,
-        }),
+        body: JSON.stringify({ message: userMessage }),
       });
 
       const data = await res.json();
 
-      const reply =
-        data?.reply && typeof data.reply === "string"
-          ? data.reply
-          : "Sorry, I couldn’t understand that properly.";
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || "Failed to get chatbot response");
+      }
 
+      setMessages((prev) => [...prev, { role: "bot", text: data.reply }]);
+    } catch (err) {
       setMessages((prev) => [
         ...prev,
         {
-          role: "assistant",
-          content: reply,
-        },
-      ]);
-    } catch (error) {
-      setMessages((prev) => [
-        ...prev,
-        {
-          role: "assistant",
-          content: "Something went wrong. Please try again.",
+          role: "bot",
+          text:
+            err instanceof Error
+              ? err.message
+              : "Something went wrong. Please try again.",
         },
       ]);
     } finally {
       setLoading(false);
     }
-  };
+  }
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+  function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
     if (e.key === "Enter") {
       e.preventDefault();
       sendMessage();
     }
-  };
+  }
 
   return (
     <>
-      {!isOpen && (
+      {!open ? (
         <button
-          onClick={() => setIsOpen(true)}
-          className="fixed bottom-6 right-6 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-black text-white shadow-2xl transition hover:scale-105"
-          aria-label="Open chatbot"
+          onClick={() => setOpen(true)}
+          className="fixed bottom-6 right-6 z-50 rounded-full bg-gradient-to-r from-cyan-400 to-blue-500 px-5 py-4 font-semibold text-black shadow-2xl"
         >
-          <MessageCircle size={24} />
+          Travel AI
         </button>
-      )}
+      ) : null}
 
-      {isOpen && (
-        <div className="fixed bottom-6 right-6 z-50 flex h-[600px] w-[360px] flex-col overflow-hidden rounded-3xl border border-white/10 bg-neutral-950 text-white shadow-2xl">
-          <div className="flex items-center justify-between border-b border-white/10 bg-neutral-900 px-4 py-4">
+      {open ? (
+        <div className="fixed bottom-6 right-6 z-50 flex h-[560px] w-[360px] flex-col overflow-hidden rounded-3xl border border-white/10 bg-[#07111f] shadow-2xl">
+          <div className="flex items-center justify-between border-b border-white/10 bg-white/5 px-4 py-4">
             <div>
-              <h2 className="text-sm font-semibold">Travel AI</h2>
-              <p className="text-xs text-neutral-400">
-                Ask about places, food, budgets, culture
-              </p>
+              <h3 className="font-semibold text-white">Travel Chatbot</h3>
+              <p className="text-xs text-white/60">Free travel assistance</p>
             </div>
-
             <button
-              onClick={() => setIsOpen(false)}
-              className="rounded-full p-2 text-neutral-300 transition hover:bg-white/10 hover:text-white"
-              aria-label="Close chatbot"
+              onClick={() => setOpen(false)}
+              className="rounded-full bg-white/10 px-3 py-1 text-sm text-white"
             >
-              <X size={18} />
+              Close
             </button>
           </div>
 
-          <div className="flex-1 overflow-y-auto bg-neutral-950 px-3 py-4">
-            <div className="flex flex-col gap-3">
-              {messages.map((msg, index) => (
-                <div
-                  key={index}
-                  className={`max-w-[85%] rounded-2xl px-4 py-3 text-sm leading-relaxed ${
-                    msg.role === "user"
-                      ? "ml-auto bg-white text-black"
-                      : "mr-auto bg-neutral-800 text-neutral-100"
-                  }`}
-                >
-                  {msg.content}
-                </div>
-              ))}
+          <div className="flex-1 space-y-3 overflow-y-auto px-4 py-4">
+            {messages.map((message, index) => (
+              <div
+                key={index}
+                className={`max-w-[85%] rounded-2xl px-4 py-3 text-sm ${
+                  message.role === "user"
+                    ? "ml-auto bg-cyan-400 text-black"
+                    : "bg-white/10 text-white"
+                }`}
+              >
+                {message.text}
+              </div>
+            ))}
 
-              {loading && (
-                <div className="mr-auto max-w-[85%] rounded-2xl bg-neutral-800 px-4 py-3 text-sm text-neutral-300">
-                  Typing...
-                </div>
-              )}
-
-              <div ref={messagesEndRef} />
-            </div>
+            {loading ? (
+              <div className="max-w-[85%] rounded-2xl bg-white/10 px-4 py-3 text-sm text-white">
+                Thinking...
+              </div>
+            ) : null}
           </div>
 
-          <div className="border-t border-white/10 bg-neutral-900 p-3">
-            <div className="flex items-center gap-2 rounded-2xl border border-white/10 bg-neutral-950 p-2">
+          <div className="border-t border-white/10 bg-white/5 p-3">
+            <div className="flex gap-2">
               <input
                 type="text"
+                placeholder="Ask about any travel destination..."
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder="Ask about your trip..."
-                className="flex-1 bg-transparent px-2 py-2 text-sm text-white outline-none placeholder:text-neutral-500"
+                className="flex-1 rounded-2xl border border-white/10 bg-[#0d1b2f] px-4 py-3 text-sm text-white outline-none placeholder:text-white/40"
               />
               <button
                 onClick={sendMessage}
-                disabled={loading || !input.trim()}
-                className="flex h-10 w-10 items-center justify-center rounded-full bg-white text-black transition hover:scale-105 disabled:cursor-not-allowed disabled:opacity-50"
-                aria-label="Send message"
+                disabled={loading}
+                className="rounded-2xl bg-gradient-to-r from-cyan-400 to-blue-500 px-4 py-3 font-semibold text-black disabled:opacity-70"
               >
-                <Send size={18} />
+                Send
               </button>
             </div>
           </div>
         </div>
-      )}
+      ) : null}
     </>
   );
 }

@@ -20,16 +20,21 @@ export async function POST(req: Request) {
       );
     }
 
-    const result = await runTravelAgent({
+    const agentResponse = await runTravelAgent({
       destination,
       days,
       budget,
       destination_type,
     });
 
+    const finalData =
+      agentResponse?.result?.result ||
+      agentResponse?.result ||
+      agentResponse;
+
     return NextResponse.json({
       success: true,
-      result,
+      itinerary: finalData,
     });
   } catch (error) {
     console.error("Travel route error:", error);

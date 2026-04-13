@@ -10,7 +10,7 @@ export async function POST(req: Request) {
     const budget = Number(body?.budget);
     const destination_type = String(body?.destination_type || "").trim();
 
-    if (!destination || !days || !budget || !destination_type) {
+    if (!destination || !days || !budget) {
       return NextResponse.json(
         {
           success: false,

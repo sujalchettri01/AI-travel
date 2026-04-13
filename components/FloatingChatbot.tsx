@@ -99,13 +99,15 @@ export default function FloatingChatbot() {
           <div className="chat-messages">
             {messages.map((msg, index) => (
               <div
-                key={index}
-                className={`chat-bubble ${
-                  msg.role === "user" ? "user-bubble" : "bot-bubble"
-                }`}
-              >
-                {msg.text}
-              </div>
+              
+  key={index}
+  className={`chat-bubble ${
+    msg.role === "user" ? "user-bubble" : "bot-bubble"
+  }`}
+  style={{ whiteSpace: "pre-line" }}
+>
+  {msg.text}
+</div>
             ))}
 
             {loading && <div className="chat-bubble bot-bubble">Typing...</div>}

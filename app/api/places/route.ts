@@ -8,7 +8,6 @@ export async function GET(req: NextRequest) {
 
   const apiKey = process.env.GOOGLE_PLACES_API_KEY;
 
-  // Step 1: Find the place
   const searchRes = await fetch(
     `https://maps.googleapis.com/maps/api/place/findplacefromtext/json?input=${encodeURIComponent(query)}&inputtype=textquery&fields=place_id,name&key=${apiKey}`
   );
@@ -17,7 +16,7 @@ export async function GET(req: NextRequest) {
 
   if (!placeId) return NextResponse.json({ photos: [] });
 
-  // Step 2: Get photo references + location
+
   const detailsRes = await fetch(
     `https://maps.googleapis.com/maps/api/place/details/json?place_id=${placeId}&fields=photos,name,geometry&key=${apiKey}`
   );
@@ -25,7 +24,7 @@ export async function GET(req: NextRequest) {
   const photos = detailsData?.result?.photos?.slice(0, 6) ?? [];
   const location = detailsData?.result?.geometry?.location ?? null;
 
-  // Step 3: Build photo URLs
+  
   const photoUrls = photos.map((p: { photo_reference: string }) =>
     `https://maps.googleapis.com/maps/api/place/photo?maxwidth=800&photo_reference=${p.photo_reference}&key=${apiKey}`
   );

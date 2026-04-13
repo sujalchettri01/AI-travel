@@ -1,4 +1,3 @@
-// actions/orchestrate.ts
 
 type LamaticResponse = {
   data?: {
@@ -10,9 +9,7 @@ type LamaticResponse = {
   errors?: { message: string }[];
 };
 
-/* =========================
-   Core Executor (Reusable)
-   ========================= */
+
 
 export async function runLamaticWorkflow({
   workflowId,
@@ -83,9 +80,6 @@ export async function runLamaticWorkflow({
   return data?.data?.executeWorkflow?.result;
 }
 
-/* =========================
-   Travel Agent (EXISTING)
-   ========================= */
 
 export async function runTravelAgent(input: {
   destination: string;
@@ -105,9 +99,7 @@ export async function runTravelAgent(input: {
   });
 }
 
-/* =========================
-   Chatbot Agent (NEW)
-   ========================= */
+
 
 export async function runChatAgent({ message }: { message: string }) {
   const workflowId = process.env.CHATBOT_FLOW_ID;
@@ -119,7 +111,7 @@ export async function runChatAgent({ message }: { message: string }) {
   return runLamaticWorkflow({
     workflowId,
     payload: {
-      message, // ✅ correctly defined
+      message, 
     },
   });
 }

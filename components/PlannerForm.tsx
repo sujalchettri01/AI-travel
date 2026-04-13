@@ -38,8 +38,12 @@ export default function PlannerForm() {
   const [dayLocation, setDayLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [mapLoading, setMapLoading] = useState(false);
 
+  const [dayPhotos, setDayPhotos] = useState<string[]>([]);
+const [dayPhotoLoading, setDayPhotoLoading] = useState(false);
+
 
   const fetchDayLocation = async (place: string) => {
+     console.log("Fetching map for:", place); 
   setMapLoading(true);
   setDayLocation(null);
 
@@ -65,6 +69,21 @@ export default function PlannerForm() {
     setDayLocation(null);
   } finally {
     setMapLoading(false);
+  }
+};
+
+
+const fetchDayPhoto = async (place: string) => {
+  setDayPhotoLoading(true);
+  setDayPhotos([]);
+  try {
+    const res = await fetch(`/api/places?query=${encodeURIComponent(place)}`);
+    const data = await res.json();
+    setDayPhotos(data.photos?.slice(0, 4) ?? []);
+  } catch {
+    setDayPhotos([]);
+  } finally {
+    setDayPhotoLoading(false);
   }
 };
 
@@ -98,18 +117,19 @@ export default function PlannerForm() {
         setPhotos([]);
       }
 
-      // Fetch map for day 1
+    
      // Fetch map for day 1
 if (data?.itinerary?.days?.[0]) {
   const firstDay = data.itinerary.days[0];
-
-  fetchDayLocation(
+  const location =
     firstDay.morning_location ||
     firstDay.afternoon_location ||
     firstDay.evening_location ||
     data?.itinerary?.destination ||
-    destination
-  );
+    destination;
+
+  fetchDayLocation(location);
+  fetchDayPhoto(location); // ADD THIS
 }
 
 
@@ -145,8 +165,8 @@ if (data?.itinerary?.days?.[0]) {
               value={budget} onChange={(e) => setBudget(e.target.value)} min="1" required />
           </div>
           <div className="input-group">
-            <label>Destination Type</label>
-            <select value={destinationType} onChange={(e) => setDestinationType(e.target.value)} required>
+           <label>Destination Type <span style={{opacity: 0.4, fontSize: "10px"}}>(optional)</span></label>
+            <select value={destinationType} onChange={(e) => setDestinationType(e.target.value)}>
               <option value="">Select a type</option>
               <option value="adventure">Adventure</option>
               <option value="mountain">Mountain</option>
@@ -173,15 +193,15 @@ if (data?.itinerary?.days?.[0]) {
         </button>
       </form>
 
-      {/* Error */}
+      
       {response?.error && <p className="error-text">{response.error}</p>}
 
-      {/* Result */}
+    
       {itinerary && (
         <div className="result-card">
           <h3>Your Travel Plan</h3>
 
-          {/* Hero */}
+          
           <div className="itinerary-hero">
             <h2>{itinerary.destination}{itinerary.country ? `, ${itinerary.country}` : ""}</h2>
             {itinerary.introduction && <p>{itinerary.introduction}</p>}
@@ -285,10 +305,18 @@ if (data?.itinerary?.days?.[0]) {
                   <button
                     key={i}
                     className={`day-tab${activeDay === i ? " active" : ""}`}
-                    onClick={() => {
-                      setActiveDay(i);
-                    fetchDayLocation(itinerary.destination ?? destination);
-                    }}>
+                 onClick={() => {
+  setActiveDay(i);
+  const selectedDay = itinerary.days![i];
+  const location =
+    selectedDay.morning_location ||
+    selectedDay.afternoon_location ||
+    selectedDay.evening_location ||
+    (itinerary.destination ?? destination);
+
+  fetchDayLocation(location);
+  fetchDayPhoto(location);
+}}>
                     Day {day.day}
                   </button>
                 ))}
@@ -334,12 +362,33 @@ if (data?.itinerary?.days?.[0]) {
                       </div>
                     )}
 
+
+                    {/* Day Photo */}
+ {/* Day Photo */}
+{dayPhotoLoading ? (
+  <div className="day-photo-loading">Loading photo...</div>
+) :    dayPhotos.length > 0 ? (
+  <div className="day-photo-section">
+    {dayPhotos.map((url, i) => (
+      <img
+        key={i}
+        src={url}
+        alt={`Photo ${i + 1} of day ${day.day}`}
+        onClick={() => setLightboxImg(url)}
+      />
+    ))}
+  </div>
+) : null}
+
                   {/* Map */}
 <div className="day-map-section">
   {mapLoading ? (
     <div className="map-loading">Loading map...</div>
   ) : dayLocation ? (
     <iframe
+
+  key={`${dayLocation.lat}-${dayLocation.lng}`}
+
       src={`https://www.openstreetmap.org/export/embed.html?bbox=${dayLocation.lng - 0.05},${dayLocation.lat - 0.05},${dayLocation.lng + 0.05},${dayLocation.lat + 0.05}&layer=mapnik&marker=${dayLocation.lat},${dayLocation.lng}`}
       style={{ width: "100%", height: "100%", border: "none" }}
       loading="lazy"

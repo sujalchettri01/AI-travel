@@ -12,13 +12,11 @@ export async function POST(req: Request) {
         { status: 400 }
       );
     }
-
-    // 👇 THIS is where it goes
     const result = await runChatAgent({ message });
 
     return NextResponse.json({
       success: true,
-      reply: result?.result ?? result, // ✅ FIX HERE
+      reply: result?.result ?? result, 
     });
   } catch (error) {
     console.error("Chatbot route error:", error);

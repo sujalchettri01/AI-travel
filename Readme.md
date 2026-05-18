@@ -2,7 +2,7 @@
 
 ## Live Demo
 
-https://ai-travel-one-black.vercel.app
+https://ai-travel-indol.vercel.app/
 
 > An **Agentic AI-powered** travel planning platform built with **Next.js** and **Lamatic AI** that generates complete, structured travel itineraries with maps, photos, local food, cultural highlights, and an interactive chatbot.
 
@@ -38,37 +38,57 @@ https://ai-travel-one-black.vercel.app
 
 ##  Project Structure
 
-```
-smart-travel/
+``
+AI-travel/
+├── .next/
+│   └── dev/
+│       ├── _events_14200.json
+│       ├── _events_16812.json
+│       ├── _events_28340.json
+│       └── _events_34504.json
+│
 ├── actions/
-│   └── orchestrate.ts          # Lamatic AI workflow runners (GraphQL calls)
+│   └── orchestrate.ts
+│
 ├── app/
 │   ├── api/
 │   │   ├── chatbot/
-│   │   │   └── route.ts        # POST /api/chatbot → runs chatbot flow
 │   │   ├── geocode/
-│   │   │   └── route.ts        # GET /api/geocode?query= → lat/lng
-│   │   ├── map-test/
-│   │   │   └── route.ts        # Map sandbox/testing endpoint
 │   │   ├── places/
-│   │   │   └── route.ts        # GET /api/places?query= → photos[]
 │   │   └── travel/
-│   │       └── route.ts        # POST /api/travel → full itinerary
-│   ├── map-test/
-│   │   └── page.tsx            # Map test/debug page
-│   ├── globals.css             # Global styles
-│   ├── layout.tsx              # Root layout
-│   └── page.tsx                # Home page
+│   │
+│   ├── globals.css
+│   ├── layout.tsx
+│   └── page.tsx
+│
 ├── components/
-│   ├── PlannerForm.tsx          # Main form + full itinerary UI
-│   ├── FloatingChatbot.tsx      # Floating AI chat widget
-│   ├── ItineraryDisplay.tsx     # Itinerary display component
-│   └── DayCard.tsx              # Single day card component
-├── lib/                         # Shared utilities
-├── public/                      # Static assets
-├── .env.local                   # Environment variables (not committed)
-└── .gitignore
-```
+│   ├── DayCard.tsx
+│   ├── FloatingChatbot.tsx
+│   ├── ItineraryDisplay.tsx
+│   └── PlannerForm.tsx
+│
+├── flows/
+│   ├── chatbot-flow/
+│   └── travel-flow/
+│
+├── lib/
+│   ├── lamatic-client.ts
+│   └── utils.ts
+│
+├── node_modules/
+│
+├── public/
+│   └── logo.png
+│
+├── .env.example
+├── .env.local
+├── .gitignore
+├── next-env.d.ts
+├── next.config.ts
+├── package-lock.json
+├── package.json
+├── README.md
+└── tsconfig.json
 
 ---
 
@@ -91,7 +111,7 @@ API Request  →  Code Node  →  LLM (Generate Itinerary)
 
 | Node | Purpose |
 |------|---------|
-| **API Request** | Receives `destination`, `days`, `budget`, `destination_type` |
+| **API Request** | Receives `destination`, `no_of_days`, `budget`, `destination_type` |
 | **Code Node** | Pre-processes and formats input for the LLM |
 | **Generate Itinerary (LLM)** | Core AI node — generates full structured travel plan |
 | **Condition Node** | Validates output completeness and structure |
